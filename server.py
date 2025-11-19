@@ -43,6 +43,16 @@ api_router = APIRouter(prefix="/api")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+#===================== DB Check ====================
+
+@app.get("/api/db-check")
+async def db_check():
+    try:
+        result = await db.command("ping")
+        return {"connected": True, "result": result}
+    except Exception as e:
+        return {"connected": False, "error": str(e)}
+
 # ==================== AUTHENTICATION ENDPOINTS ====================
 
 @api_router.post("/auth/send-otp")
