@@ -140,6 +140,30 @@ async def login(credentials: UserLogin):
     
     return TokenResponse(access_token=access_token, user=user)
 
+@api_router.post("/auth/verify-mobile")
+async def verify_mobile(request: dict):
+    """Check if mobile number exists in DB"""
+    # Accept either a dict body or an object with .phone attribute
+    phone = request.get("phone") if isinstance(request, dict) else getattr(request, "phone", None)
+    if not phone:
+        raise HTTPException(status_code=400, detail="phone is required")
+    user_doc = await db.users.find_one({"phone": phone})
+    if not user_doc:
+        return {
+            "success": False,
+            "message": "User not found",
+            "user_exists": False
+        }
+    user = User(**user_doc)
+    access_token = create_access_token(data={"sub": user.id, "role": user.role})
+    return {
+        "success": True,
+        "message": "User exists",
+        "user_exists": True,
+        "access_token": access_token,
+        "user": user
+    }
+
 @api_router.get("/auth/me", response_model=User)
 async def get_me(current_user: dict = Depends(get_current_user)):
     """Get current user profile"""
