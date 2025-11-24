@@ -92,7 +92,10 @@ def create_order(amount: float, currency: str = "INR", receipt: Optional[str] = 
         order_data["receipt"] = receipt
     
     try:
+        print(f"[Razorpay] Creating order with data: {order_data}")
+        print(f"[Razorpay] Using Key ID: {RAZORPAY_KEY_ID}")
         order = client.order.create(data=order_data)
+        print(f"[Razorpay] Order created successfully: {order}")
         return {
             "success": True,
             "order_id": order["id"],
@@ -100,6 +103,9 @@ def create_order(amount: float, currency: str = "INR", receipt: Optional[str] = 
             "currency": currency
         }
     except Exception as e:
+        print(f"[Razorpay] Error creating order: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return {
             "success": False,
             "error": str(e)

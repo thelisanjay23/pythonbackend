@@ -469,16 +469,37 @@ async def create_payment_order(
     order_data: PaymentOrderCreate,
     current_user: dict = Depends(get_current_user)
 ):
+    # log order_data 
+    print("Order Data:", order_data)
     """Create Razorpay order for payment - updated to use child_id"""
-    # Create temporary enrollment ID for payment tracking
-    temp_enrollment_id = f"temp_{order_data.child_id}_{str(int(datetime.utcnow().timestamp()))}"
-    
-    # Create Razorpay order (receipt max 40 chars)
-    receipt = f"pay_{order_data.child_id[:28]}"
-    order_result = create_order(int(order_data.amount), receipt=receipt)
-    
-    if not order_result["success"]:
-        raise HTTPException(status_code=500, detail=order_result.get("error"))
+    try:
+        # Create temporary enrollment ID for payment tracking
+        temp_enrollment_id = f"temp_{order_data.child_id}_{str(int(datetime.utcnow().timestamp()))}"
+        
+        # Create Razorpay order (receipt max 40 chars)
+        receipt = f"pay_{order_data.child_id[:28]}"
+        print(f"Creating Razorpay order - Amount: {order_data.amount}, Receipt: {receipt}")
+        
+        order_result = create_order(int(order_data.amount), receipt=receipt)
+        print(f"Razorpay order result: {order_result}")
+        
+        if not order_result["success"]:
+            error_msg = order_result.get("error", "Unknown error")
+            logger.error(f"Razorpay order creation failed: {error_msg}")
+            
+            # Check if it's an authentication error
+            if "Authentication failed" in error_msg or "authentication" in error_msg.lower():
+                raise HTTPException(
+                    status_code=500, 
+                    detail="Razorpay authentication failed. Please check API credentials in .env file. See RAZORPAY_AUTH_ISSUE.md for troubleshooting."
+                )
+            
+            raise HTTPException(status_code=500, detail=f"Razorpay error: {error_msg}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating payment order: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to create payment order: {str(e)}")
     
     # Create pending payment record
     payment = Payment(
